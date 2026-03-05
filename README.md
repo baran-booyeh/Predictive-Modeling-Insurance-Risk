@@ -9,9 +9,9 @@ Insurers lose millions annually to mispriced policies, charging too little for h
 
 Three questions every underwriter and actuary should be asking:
 
-- **Who costs more than we think?** : Identify policyholders whose risk profile doesn't match their premium.
-- **What's actually driving claims?** : Strip out noise and surface the variables that move the needle.
-- **Which customers cluster together?** : Segment your book of business by risk profile, not just demographics.
+- **Who costs more than we think?**  Identify policyholders whose risk profile doesn't match their premium.
+- **What's actually driving claims?** Strip out noise and surface the variables that move the needle.
+- **Which customers cluster together?**  Segment your book of business by risk profile, not just demographics.
 
 ---
 
@@ -23,7 +23,7 @@ Three questions every underwriter and actuary should be asking:
 | K-Nearest Neighbors | Classifies risk tier | Underwriting decisioning |
 | Hierarchical Clustering | Groups similar policyholders | Portfolio segmentation |
 
-Model performance was validated using confusion matrices and error metrics — not just "it ran without errors."
+Model performance was validated using confusion matrices and error metrics!
 
 ---
 
@@ -52,27 +52,4 @@ R · R Markdown · ggplot2 · caret · dplyr
 - **Product managers** evaluating risk-based pricing initiatives
 - **Analysts** exploring how statistical learning applies to financial risk
 
----
 
-## Repository structure
-
-```
-├── data/               # Raw and processed datasets
-├── notebooks/          # R Markdown analysis files
-├── models/             # Trained model outputs
-├── figures/            # Plots and visualizations
-└── README.md
-```
-
----
-
-## Get started
-
-```r
-# Clone and open the main analysis
-source("notebooks/insurance_analysis.Rmd")
-```
-
----
-
-*Built with R. Questions or contributions welcome via Issues or PRs.*
