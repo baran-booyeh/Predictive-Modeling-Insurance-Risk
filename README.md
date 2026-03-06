@@ -1,15 +1,16 @@
-# Insurance Risk & Cost Prediction
+# Insurance Risk & Cost Prediction 
 ### Stop guessing. Start pricing right.
 
-Insurers lose millions annually to mispriced policies, charging too little for high-risk customers, and losing low-risk ones to competitors. This project builds predictive models that explain what drives insurance costs and how to anticipate them.
+Insurers lose millions annually to mispriced policies, charging too little for high-risk customers, and losing low-risk ones to competitors. This project builds predictive models that explain what drives insurance costs and how to anticipate them. 
 
 ---
+<img width="1800" height="379" alt="image" src="https://github.com/user-attachments/assets/fee7553e-983a-4edb-b003-a092e62795f6" />
+
 
 ## Dataset
+The analysis uses the publicly available Medical Cost Personal Dataset (1338 individuals), downloaded from Kaggle.com.
 
-The analysis uses the publicly available Medical Cost Personal Dataset (1,338 individuals), commonly used for insurance pricing analysis.
 ---
-
 ## The Core Finding
 
 **Smoking doesn't just add a flat cost, but it a ctually changes how every other factor behaves.**
