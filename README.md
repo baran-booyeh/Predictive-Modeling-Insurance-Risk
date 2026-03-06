@@ -1,55 +1,48 @@
 # Insurance Risk & Cost Prediction
 ### Stop guessing. Start pricing right.
 
-Insurers lose millions annually to mispriced policies, charging too little for high-risk customers, and losing low-risk ones to competitors. This project builds predictive models that flag where those gaps are.
+Insurers lose millions annually to mispriced policies, charging too little for high-risk customers, and losing low-risk ones to competitors. This project builds predictive models that explain what drives insurance costs and how to anticipate them.
 
 ---
 
-## What this solves
+## Dataset
 
-Three questions every underwriter and actuary should be asking:
+The analysis uses the publicly available Medical Cost Personal Dataset (1,338 individuals), commonly used for insurance pricing analysis.
+---
 
-- **Who costs more than we think?**  Identify policyholders whose risk profile doesn't match their premium.
-- **What's actually driving claims?** Strip out noise and surface the variables that move the needle.
-- **Which customers cluster together?**  Segment your book of business by risk profile, not just demographics.
+## The Core Finding
+
+**Smoking doesn't just add a flat cost, but it a ctually changes how every other factor behaves.**
+
+A smoker with high BMI doesn't pay more for two separate reasons. The combination compounds. Same with age : the older a smoker gets, the faster their costs grow compared to a non-smoker. Once that interaction was modelled properly, the accuracy jumped from **75% to 94%**.
+
+The final model explains **94% of insurance cost variability** across 1,338 individuals.
+
+<img width="1174" height="811" alt="image" src="https://github.com/user-attachments/assets/ff170396-9223-4ef6-b8d6-581660d3bb53" />
+
 
 ---
 
-## Results that matter
+## What drives your insurance bill
 
-| Model | What it does | Business use |
+| Factor | Impact |
+|---|---|
+| Being a smoker | +$23822 vs. a non-smoker |
+| +1 unit of BMI | +$322 |
+| +1 year of age | +$258 |
+| Having children | +$993 vs. having none |
+| Region / Gender | Minimal ~ dropped from the final model |
+
+> Smoking also amplifies the effect of BMI, age, sex, and children. It's not just a variable, it's a **multiplier**.
+
+---
+
+## Model Progression
+
+| Version | R² | What changed |
 |---|---|---|
-| Linear Regression | Predicts cost of a claim | Premium calibration |
-| K-Nearest Neighbors | Classifies risk tier | Underwriting decisioning |
-| Hierarchical Clustering | Groups similar policyholders | Portfolio segmentation |
+| Base regression | 0.75 | Age, BMI, smoker, children |
+| + Interaction terms | **0.94** | Smoking modelled as a moderator across all variables |
 
-Model performance was validated using confusion matrices and error metrics!
-
----
-
-## Stack
-
-R · R Markdown · ggplot2 · caret · dplyr
-
----
-
-## How it's built
-
-```
-1. Exploratory analysis   → find the signal in the noise
-2. Preprocessing          → clean, encode, scale
-3. Model training         → LM, KNN, clustering
-4. Evaluation             → compare models head-to-head
-5. Interpretation         → translate outputs into decisions
-```
-
----
-
-## Who should care
-
-- **Actuaries** building or validating pricing models
-- **Data teams** at insurers, brokers, or MGAs
-- **Product managers** evaluating risk-based pricing initiatives
-- **Analysts** exploring how statistical learning applies to financial risk
-
+The jump came from one insight: stop treating smoking as a yes/no flag and start asking how it reshapes every other relationship in the data.
 
