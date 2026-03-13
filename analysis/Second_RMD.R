@@ -1,0 +1,1029 @@
+
+
+```{r loading packeges, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(datarium)
+library(dplyr)
+library(devtools)
+library(caret)
+library(ggfortify)
+library(gvlma)
+library(psych)
+library(knitr)
+library(corrplot)
+library(scales)
+library(gridExtra)
+library(kableExtra)
+library(infer)
+library(stats)
+library(MASS)
+library(janitor)
+library(plyr)
+library(car)
+library(ggpubr)
+library(labelled)
+library(plm)
+library(clValid)  
+library(cluster)
+library(tsoutliers)
+library(factoextra ) 
+library(FactoMineR)
+library(caret)
+library(e1071)
+library(MASS)
+library(lda)
+```
+
+
+
+# Dataset:
+
+The data set "Medical Cost Dataset" had been downloaded from kaggle.com.
+It has 1338 Observations (statistical units) and 7 Variables(Columns).
+
+The 7 variables are:
+
+* age: age of primary beneficiary,
+
+* sex: insurance contractor gender, female, male
+
+* bmi: Body mass index, providing an understanding of body, weights that are relatively high or low relative to height,
+objective index of body weight (kg / m ^ 2) using the ratio of height to weight, ideally 18.5 to 24.9
+
+* children: Number of children covered by health insurance / Number of dependents
+
+* smoker: Smoking
+
+* region: the beneficiary's residential area in the US, northeast, southeast, southwest, northwest.
+
+* charges: Individual medical costs billed by health insurance
+
+```{r File uploading, warning=FALSE}
+library(readr)
+insurance <- read_csv("D:/Data Analytics/Semester 4/Statistical Learning/My Project/insurance.csv")
+dim(insurance)
+attach(insurance)
+```
+
+```{r warning=FALSE}
+head(insurance)
+```
+
+Now is the time to convert Categorical variables to Factor:
+
+```{r Categorical to Factor, message=FALSE, warning=FALSE}
+insurance$sex=as.factor(sex)
+insurance$region=as.factor(region)
+insurance$children=as.factor(children)
+insurance$smoker=as.factor(smoker)
+```
+
+Check the summary to find out if there is any errors or missing values, it also helps us to recognize some outliers or errors :
+```{r Summary of data set, warning=FALSE}
+summary(insurance)
+```
+
+Everything sounds Normal.
+
+Age, BMI and Charges are numerical variables.
+
+Sex, Regions,smoker, and children are Nominal categorical Variables.
+
+Now, we want to change smoker column to 1 and 0, and also sex column to 1= female and 0= male.
+
+```{r}
+insurance$smoker <- as.factor(ifelse(smoker=="yes",1,0))
+insurance$sex <- as.factor(ifelse(sex=="female",1,0))
+summary(insurance)
+```
+
+
+# Regression:
+
+The first point is to check the pairs and correlation matrix.
+Note: Ordinal and binomial variables can not be checked by Pearson Correlation Matrix.
+
+```{r}
+new_ins <- insurance[c("age","bmi","charges" )]
+pairs(new_ins)
+```
+
+```{r}
+cor(new_ins)
+```
+
+There is not a high correlation between age, BMI and charges for insurance.
+Anyhow, we are gonna check the linear Regression between all the variables we have, so we can check if they are having some relationship:
+
+
+# BMI Prediction:
+
+The first thing I want to predict is BMI. Let's see if we can predict BMI base on age, sex, and smoker and if there is a statistically significant impact of these variables on the amount of BMI:
+
+```{r warning=FALSE}
+mod1 <- lm(bmi ~ sex+ age+ smoker, data = insurance)
+summary(mod1)
+```
+Base on this model, we found out that with respect to the dummy variable smoker, smoking does not have an impact on the BMI of the body. On the other hand, the p-value for sex is also not significant(less than 0.05) which means that the Body Mass Index of people in this data set does not depend on their gender. Meanwhile, as can be seen, the p-value of age is so little, almost zero. It explains that the body mass index has a linear relationship with the age . SO we can interpret that On average, if the age of the individuals increases by 1 year, the Body mass index increases by almost 4.8%.
+This model explains only 1% of the variability explained. It means the model is not so sufficient.
+
+________________________________________________________________________________
+Just exercise:
+
+I want to have a simple linear regression with only numerical variables so I can check their plots, so let's use only our numerical variables to predict insurance charges:
+
+```{r}
+mod1_2 <- lm(bmi~age)
+summary(mod1_2)
+```
+
+Even though the adjusted R^2 reduced, we only need this to check the plots:
+
+```{r}
+plot(mod1_2)
+```
+
+
+The plots which has showed are:
+
+* residuals versus fitted values (Testing Linearity Assumption):
+
+The dotted line at y=0 is fit line. Points above have positive residuals and points below have negative residuals. 
+Red line is the smoothed high order polynomial curve showing pattern of residual movements.
+
+It sounds a good residual vs fitted values plot as it is kinda symmetrically distributed. It sounds like there are some outliers(1318, 1048, 848). 
+
+* QQ plot(The mean of residuals is zero and residuals are normally Distributed):
+
+Used to check for normality. Basic idea is to compute theoretically expected values foe each data point base on distribution in the question. If the data follows the assumed distribution, points should fall approximately on straight line. Here, as can be seen, The residuals sounds normally distributed, only the outliers can be seen at the end of the line.
+
+* Scale-Location Plot (Homoscedasticity assumption of Residuals):
+
+The variance of errors should be constant so we would not suffer from heteroscedacity. Basically, it indicates spread of points across predicted values range. Here, the red line is flat and horizontal, with equally and randomly spread datapoints which means it is a good sclae-location plot. 
+
+* Residuals vs Leverage Plot (influential cases) :
+
+In the Residual vs Leverage plots, we try to find the influential cases. The influence shows how much that predicted score change if the observation is excluded by using Cook's Distance. On the other hand, Leverage shows us how much the observation value on predictor variable differs from the mean of predictor variable. The more leverage, greater potential  of having influence. 
+The dotted red line shows Cook's distance, if a data point is high in leverage or influential, it falls in the region of cook's distance. Here, we do not have that region as there are no influential cases.
+
+________________________________________________________________________________
+
+
+# Charges for insurance Prediction:
+
+Anyhow, it sounds like there is not enough variables to predict BMI in this dataset. So it is time to move on to the specific reason why this dataset gathered, The charges of Insurance.So now, we change our target feature to Charges, which explains the medical costs billed by health insurance. We want to predict the insurance costs based on the other variables we have, and to check if they have any significant impact to predict the charges.
+
+```{r}
+ggplot(insurance, aes(age, charges) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+
+```{r}
+ggplot(insurance, aes(bmi, charges) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+
+```{r}
+ggplot(insurance, aes(charges, fill= smoker ))+
+  geom_density(alpha=0.5) 
+```
+
+```{r}
+ggplot(insurance, aes(charges, fill= sex ))+
+  geom_density(alpha=0.5) 
+```
+
+```{r}
+ggplot(insurance, aes(charges, fill= children ))+
+  geom_density(alpha=0.5) 
+```
+```{r}
+ggplot(insurance, aes(charges, fill= region ))+
+  geom_density(alpha=0.5) 
+```
+
+Base on the plots, it sound like the most important factor among the categorical ones on the charges has been smoking variable which shows that individuals whom smoke have to spend more on the insurance than the ones who do not.
+So now let's check the charges by age and bmi with regard to smoking.
+
+```{r}
+ggplot(insurance, aes(age, charges, fill= smoker, group= smoker, col= smoker) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+```{r}
+ggplot(insurance, aes(bmi, charges, fill= smoker, group= smoker, col= smoker) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+Here, we grouped our data points base on the smokers variable. It seems like the highest impact on the charges of the insurance is the fact of smoking. 
+
+Now, to check the linear regression model, we convert the children and region categorical variables to dummy variables so we get the regression coefficients with regard to not having a child in the children feature and with respect to south west in the regions. So here our reference modality is the South west.
+
+```{r}
+insurance$children2 <- ifelse(children=="1"|children=="2"|children=="3"|children=="4"|children=="5", 1, 0)
+insurance$northeast <- ifelse(region=="northeast",1,0)
+insurance$northwest <- ifelse(region=="northwest",1,0)
+insurance$southeast <- ifelse(region=="southeast",1,0)
+```
+
+let's check the linear effect of all features on predicting the amount of charges for insurance:
+
+
+```{r}
+mod2 <- lm(charges~age+sex+bmi+smoker+children2+northwest+northeast+southeast , data= insurance)
+summary(mod2)
+```
+Multiple Linear Regression tells us what percentage of the variation within our dependent variable that the independent variable is explaining. In other words, it’s another method to determine how well our model is fitting the data.
+Most of the features are statistically significant in this model. By checking the R^2, we can say that this model can explain almost 75% of the variability. The only independent variables which do not have statistically significant effects are sex, and Northwest and Southeast with respect to Southwest. 
+So basically we can write the model in this way:
+
+Charges= 256.91age + 339.51bmi+ 23849.65smoker+ 944.26northeast +999.58children - 13071.68
+
+But I want to check without the region part and see how it is different:
+```{r}
+mod3 <- lm(charges~age+sex+bmi+smoker+children2 , data= insurance)
+summary(mod3)
+```
+
+The R^2 did not change so much. It can be concluded that the regions do not have a high statistically significant in the amount of charges for insurance. I prefer to use this model from now on.
+
+Charges= 257.83age + 322.22bmi+ 23822.28smoker +992.59children - 12225
+
+By checking the p-values, we get all three variables of age,BMI and smoker statistically significant with the threshold of 0.001. While for the dummy variable of children, it is statistically significant with the threshold of 0.01.
+
+So basically, By taking other predictors constant,On average, with increasing the age by 1 year, the charge for the insurance increases by 258 times. In addition, with one unitary change in BMI, the dependent variable increase by 322.22. On the one hand, if an individual is a smoker, the amount of the money he should pay for insurance increases by 23822.28 times with respect to the non-smoker one. At last but not least, having children increases the insurance payment by 992.59 times with respect to not having any.
+
+
+
+
+
+But now it is important to check the Mulitlinear Regression model assumptions:
+
+# Check the Assumptions:
+
+* 1) The regression model is linear in parameters:
+
+The crPlots() function analyses if the predictors have a linear relationship with the dependent variable. 
+In each plot, the predictor variable is plotted on the x-axis, and the residuals are plotted on the y-axis. A smooth line is then fitted to the scatterplot to help identify any potential non-linear patterns.
+If the relationship between the predictor and the residuals appears to be approximately linear, with the points scattered randomly around the smooth line, it suggests that the linearity assumption is met. On the other hand, if there is a clear pattern or curvature in the plot, it indicates possible non-linearity, and further model adjustments may be necessary (transforming variables or adding higher-order terms).
+these plots should be used as a diagnostic tool rather than as definitive evidence of linearity. 
+You should see a violet line that models the residuals of the predictor against the dependent variable. The blue dashed line represents the line of best fit. If the violet line seems to be similarly linear as the blue line, it is good. If the violet line is curved relative to the blue line, maybe there is a linearity problem.
+
+```{r message=FALSE, warning=FALSE}
+library(car)
+crPlots(mod3) 
+```
+
+The violate line sounds to be curved relative to blue line in BMI, so maybe we should try to transform varibale to log or polynomial variable. Check later.
+
+* 2) The mean of residuals is zero and the residuals are normally distributed
+
+Check the mean of residuals:
+
+```{r}
+mean(mod3$residuals)
+```
+The mean of residuals is so little, close to zero. But it is not enough to say that the residuals re normally distributed.
+
+Testing the Normality Assumption of the error term:
+
+```{r}
+library(tseries)
+shapiro.test(mod3$residuals)
+```
+
+The Null hypothesis of the Shapiro test is that the residuals are normally distributed. Here, we got the p-value so little, close to zero, which means we should reject the null hypothesis and say that our residuals are not normally distributed. To solve this problem we should delete outliers, insert possible ommitted variables or transform our predictors.
+
+* 3) Homoscedasticity of residuals
+
+Testing analytically for homoscedasticity (instead of Scale-Location Plot)
+
+The Breush-Pagan test:
+the null hypothesis is that the variance of the residuals is constant
+
+```{r}
+lmtest::bptest(mod3)
+```
+
+
+So it is obvious that our model also suffers from Heteroscedacity, which means the variance of residuals is not constant and iit changes with regard to the amount of variable.
+
+To solve this problem, we should check for missing variables, delete outliers,  check if the model is nonlinear, transform causing variables, use heteroscedacity consistent standard error, or use weighted least squares.
+
+After checking other assumptions, I am gonna transform charges to log(charges) to see if anything may change.
+
+* 4) Independence of the errors -> No autocorrelation of residuals (especially for time series data)
+
+Durbin-Watson test:
+
+H0: no autocorrelation of residuals
+```{r message=FALSE, warning=FALSE}
+library(lmtest)
+lmtest::dwtest(mod3) 
+```
+The p-value is high, which means we fail to reject our null hypothesis, so, there is no autocorrelation of residuals.
+
+* 5)The predictors and residuals are uncorrelated .
+
+If the error term and predictors are correlated, it brings to endogenaity problem. The presence of endogenous variable always cause bias in the model.
+It is not enough to check only cor.test, but it is mostly for curiosity.
+ H0: correlation is 0 (there is no correlation)
+```{r}
+cor.test(insurance$age, mod3$residuals)  
+```
+```{r}
+cor.test(insurance$bmi, mod3$residuals)
+```
+
+By getting the p-value =1 for both age and bmi, we fail reject the null hypothesis and say that there is no correlation between predictors and error.
+```{r}
+par(mfrow=c(2,2))
+
+plot(insurance$age, mod3$residuals)
+```
+```{r}
+plot(insurance$bmi, mod3$residuals)
+```
+By checking the plots, we can see if there is any trend or pattern between the predictors and residuals. 
+
+For age, it does not seem any pattern of increasing or decreasing the amount of residuals. On the other hand, it is hard to see a trend in the bmi variable, but it sounds like there is 3 clusters, which 2 of them sound having like a linear relationship, but as they are seen for the same amount of BMI, I guess it is not really easy  to distinguish endogenaity.
+
+* 6) The number of observations must be greater than number of predictors 
+
+k+2 where k is the number of predictors. 
+This is the minimum required to derive an error term for the model. 
+It won't generally be a very useful or precise model 
+
+The general rule of thumb (based on stuff in Frank Harrell's book, Regression Modeling Strategies) is that if we expect to be able to detect reasonable-sizeeffects with reasonable power, you need 10-20 observations per parameter (covariate) estimated. 
+
+Here we have 1338 observations(statistical units) of 7 variables. so this assumptions has been met.
+
+* 7) Absence of perfect multicollinearity 
+
+Remove the predictors with the highest VIF(Variance Inflation Factor), if it is high, it means the information in the variable is explained by other X, so the lower the better. Generally we exclude variables with VIF higher than 5 or 10. We can also Look at the correlation between all variables and keep only one of all highly correlated pairs.
+
+Here it is better to check VIF as it is a better way to assess multicolinearity.
+
+
+```{r}
+car::vif(mod3)
+```
+
+We get little VIF for all of our predictors. Anyway, I guess it is not a suitable measure for our dummy variables, but for the numerical ones, we can see that there is not a perfect multicolinearity present.
+
+* Check some assumpptions Automatically:
+
+```{r}
+library(gvlma)
+gvlma::gvlma(mod3)
+```
+
+In summary, when these assumptions are not satisfied, it indicates potential issues in the regression model. Violations of normality assumptions (skewness and kurtosis) suggest that the residuals do not follow a normal distribution, which may affect the accuracy of statistical inference.(It also had been shown by Shapiro test)
+A violation of the link function assumption indicates that the chosen model may not be suitable for representing the relationship between the predictors and the response.
+Finally, a violation of the global assumption implies that there are multiple issues with the assumptions of the multilinear regression model.
+
+
+# Solving the problems:
+
+* Transforming to log model:
+
+let's try to transform the variables into log form:
+As we do not have 0 for none of the BMI and age, there is no need to change or delete any observation.
+Log-Log model:
+
+```{r}
+mod3_2 <- lm(log(charges) ~ log(age)+ log(bmi) + sex + smoker + children2, data = insurance)
+summary(mod3_2)
+```
+Lin-Log model:
+
+```{r}
+mod3_3 <- lm(charges ~ log(age)+ log(bmi) + sex + smoker + children2, data= insurance)
+summary(mod3_3)
+```
+
+Log-lin model:
+
+```{r}
+mod3_4<- lm(log(charges) ~ age+ bmi + sex + smoker + children2, data = insurance) 
+summary(mod3_4)
+```
+
+
+We can see that using Log-Log model improves our R^2 to 76%. So it sounds to be a better model to use.
+
+```{r}
+shapiro.test(mod3_2$residuals)
+```
+```{r}
+lmtest::bptest(mod3_2)
+```
+
+```{r}
+shapiro.test(mod3_4$residuals)
+```
+```{r}
+lmtest::bptest(mod3_4)
+```
+
+Transforming the variables did not really solve the problems we had even though it had increased the R^2.
+
+* Delete outliers:
+
+Now try to delete some outliers:
+```{r}
+par(mfrow=c(2,2))
+plot(mod3_2) 
+```
+
+let's try to remove observation 431 which sounds problemistic:
+
+```{r}
+insurance_new=insurance[-431,]
+```
+```{r}
+mod3_2_new <- lm(log(charges) ~ log(age)+ log(bmi) + sex + smoker + children2, data = insurance_new)
+summary(mod3_2_new)
+```
+```{r}
+shapiro.test(mod3_2_new$residuals)
+```
+ It still did not change.
+ 
+```{r}
+residuals <- residuals(mod3_2)
+stnd_res <- scale(residuals)
+outlier_ind <- which(abs(stnd_res)>2.5)
+outlier_ind
+```
+ 
+```{r}
+insurance_new2=insurance[-outlier_ind,]
+mod3_2_new2 <- lm(log(charges) ~ log(age)+ log(bmi) + sex + smoker + children2, data = insurance_new2)
+summary(mod3_2_new2)
+```
+NIICEE :))
+By removing the outliers had been found in the model, the adjusted R^2 increased to 86% which is a significant increase.
+Now let's again check the shapiro test to see if it has changed:
+
+
+```{r}
+shapiro.test(mod3_2_new2$residuals)
+```
+```{r}
+lmtest::bptest(mod3_2_new2)
+```
+
+come on! so basically the problems we had did not have anything with outliers.
+
+Maybe it is due to missing variables.
+
+# Moderation effect:
+
+Let's check some moderation effects to see if they had been the missing variables, also all the dummy variables we made for the regions:
+
+```{r}
+mod3_2_new3 <- lm(log(charges) ~ log(age)+ log(bmi)+ bmi*smoker+ smoker*age +smoker*sex +smoker*children2+ sex + smoker + children2+northwest+northeast+southeast , data = insurance_new2)
+summary(mod3_2_new3)
+```
+We again improve our R^2 to almost 95% by adding two moderation effects of all predictors with smoker, and adding the dummy variables we made for region before. The moderation effects are all statistically significant. It means that being smoker is a significant moderator that influence the direction and strength the relation between our independent and dependent variables. 
+
+```{r}
+shapiro.test(mod3_2_new3$residuals)
+```
+
+```{r}
+lmtest::bptest(mod3_2_new3)
+```
+
+Oh my goddd :)))) it finally worked at least for the heteroscedacity problem we had, so basically now we have a homoscedacity model.
+for the residuals to be normally distributed, I really do not know what else to do:'))
+Last try, base on the Experimental Research design: Using BoxCox Transformation :
+By applying the Box-Cox transformation, we can improve the normality and variance assumptions of a variable, which can lead to more accurate and reliable statistical modeling results. It is mostly used in the case of skewness or heteroscedacity.
+
+
+```{r}
+
+distBCMod <- caret::BoxCoxTrans(mod3_2_new3$residuals)   # try to make dist of residuals normal
+print(distBCMod)
+dist_new=predict(distBCMod, mod3_2_new3$residuals)   # transform the distance using lambda
+hist(dist_new)
+shapiro.test(dist_new)
+```
+It did not work. It is maybe the time to quit?
+
+The only certain thing is uncertainty, and we leave this one uncertain. Ahahaha.
+
+# Model Selection:
+
+get AIC to compare the full model and the best selected model
+edf	:the 'equivalent degrees of freedom' for the fitted model fit.
+AIC :	the (generalized) Akaike Information Criterion for fit
+AIC is an estimator of prediction error that balances goodness of fit (RSS) against complexity (number of parameters), and thus, deals with both the risk of overfitting and the risk of underfitting.
+AIC quantifies the information loss. Thus, the lower AIC, the better is.
+
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+attach(insurance_new2)
+best_step_model <- stepAIC(mod3_2_new3, direction = "both", trace = T)
+best_step_model <- stepAIC(mod3_2_new3, direction = "both", trace = F)
+```
+```{r}
+extractAIC(mod3_2_new3)
+```
+```{r}
+extractAIC(best_step_model)
+```
+
+The equivalent degree of freedom for our model is 15 with AIC -3869.736, while for th best model, the df is 14 with AIC of -3871.193. In this case, the AIC values suggest that the best model has a slightly higher AIC compared to the model we made.However, the difference between the AIC values is relatively small, meaning that both models provide a similar level of fit to the data.
+
+
+# Supervised Classification:
+
+
+As we want to check the label of smoker, we have only 2 classes of smokers with 20% and non-smokers with 80%, so we can use logistic regression:
+
+The predictors we decide to use are age, bmi and charges. 
+We start by randomizing, and then as the predictors have different measurements, we normalize them.
+
+```{r}
+library(class)
+
+set.seed(123)
+random <- sample(rep(1:1338))
+
+insurance <- insurance[random,]
+
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+insurance.new <- as.data.frame(lapply(insurance[, c(1, 3, 7)], normalize))
+
+```
+
+When we split our data into training and test set, we loose a lot of information. Here, we use Resampling Methods to find classifier with the least misclassification error:
+
+* Logistic regression with Leave-one-out-cross-validation:
+
+```{r message=FALSE, warning=FALSE}
+control <- trainControl(method="LOOCV")
+
+mod4 <- train(insurance.new, insurance$smoker,
+              method = "glm",
+              preProcess = c("center", "scale"),
+              tuneLength = 10,
+              trControl = control)
+mod4
+
+mod4$finalModel
+```
+* Logistic regression with k-fold cross-validation
+
+```{r}
+control <- trainControl(method="cv", number=10)
+
+mod4_2 <- train(insurance.new, insurance$smoker,
+              method = "glm",
+              preProcess = c("center", "scale"),
+              tuneLength = 10,
+              trControl = control)
+mod4_2
+
+mod4_2$finalModel
+```
+
+* Logistic regression with bootstrap
+
+```{r}
+control <- trainControl(method="boot")
+
+mod4_3 <- train(insurance.new, insurance$smoker,
+              method = "glm",
+              preProcess = c("center", "scale"),
+              tuneLength = 10,
+              trControl = control)
+mod4_3
+
+mod4_3$finalModel
+```
+
+We focus on 2 metrics of Accuracy and Kappa:
+Accuracy: is the percentage of correctly classifies instances out of all instances. It is more useful here that we have the Binary classification.
+Kappa: same as accuracy, except that it is normalized at the baseline of random chance on your dataset.More useful specially here as we have imbalance classes of 80% non-smokers and 20% smokers. 
+
+By checking these 2 metrics, we get the highest amount in k-fold cross-validation method with 10 folds by getting almost 87% of kappa and almost 96% accuracy.
+
+* Accuracy of Logistic Regression and K-nn:
+
+Use knn (tuneLength = 3) and logistic regression
+Use k-fold cross-validation from 5 to 20 splits
+to understand for which k-fold we get best Accuracy considering LR and Knn for different k
+
+```{r}
+library(caret)
+library(psych)
+control <- trainControl(method="cv", number=10)
+
+prova <- train(insurance.new, insurance$smoker,
+              method = "glm",
+              preProcess = c("center", "scale"),
+              tuneLength = 10,
+              trControl = control)
+
+prova
+prova$results[2]
+class(prova$results[2])
+
+as.numeric(prova$results[2])
+class(as.numeric(prova$results[2]))
+
+# now we can do it
+
+appo=rep(NA, length(5:20))
+appo
+length(appo)
+
+for (i in 5:20) {control <- trainControl(method="cv", number=i)
+mod <- train(insurance.new, insurance$smoker,
+             method = "glm",
+             preProcess = c("center", "scale"),
+             tuneLength = 3,
+             trControl = control)
+appo[i-4]=as.numeric(mod$results[2])
+}
+
+appo
+
+plot(5:20, appo, type="l", xlab="Folds", ylab="Accuracy of LR", col="Red", 
+     main="Accuracy of LR as k-folds changes")
+
+legend("topright", "Logistic Regression",lty = 1, y.intersp = 0.65, ncol = 1, lwd = 1, 
+       col = "red", xjust = 1, merge = TRUE)
+
+
+# then we look for the best k-fold for kkn
+
+# trying to understand how to do it
+
+prova <- train(insurance.new, insurance$smoker,
+               method = "knn", preProcess = c("center", "scale"),
+               tuneLength = 3,
+               trControl = control)
+
+prova     # now it is not a single value
+prova$results$Accuracy    # now we have a vector of Accuracy values for each value of k-fold
+
+# we need an appo matrix of dimension:
+rr=length(5:20)   # on rows  we can put the amount of the split (fold)
+cc=length(prova$results$Accuracy)  # on the columns we can put the different knn
+
+appo2=matrix(NA, rr,cc)
+appo2
+
+for (i in 5:20) {control <- trainControl(method="cv", number=i)
+mod <- train(insurance.new, insurance$smoker,
+             method = "knn",
+             preProcess = c("center", "scale"),
+             tuneLength = 3,
+             trControl = control)
+appo2[i-4,]=mod$results$Accuracy
+}
+
+appo2
+
+max(appo)
+max(appo2)
+
+plot(5:20, appo, type="l", xlab="Folds", ylab="Accuracy of LR", col="Red",ylim=c(0.94,0.98), main="Accuracy of LR and k-nn for k=5,7,9 using K-fold cross validation")
+par(new=TRUE) 
+plot(5:20, appo2[,1], type="l", xlab="Folds", ylab="Accuracy of LR", col="Blue",ylim=c(0.94,0.98))
+par(new=TRUE) 
+plot(5:20, appo2[,2], type="l", xlab="Folds", ylab="Accuracy of LR", col="Yellow",ylim=c(0.94,0.98))
+par(new=TRUE) 
+plot(5:20, appo2[,3], type="l", xlab="Folds", ylab="Accuracy of LR", col="Grey",ylim=c(0.94,0.98))
+legend("topright",c("Logistic Regression","k-nn with k=5","k-nn with k=7","k-nn with k=9"),lty = 1, ncol = 1, lwd = 1, 
+       col = c("red","Blue","Yellow","Grey"), xjust = 1, merge = TRUE)
+
+```
+
+Here, it is obvious that generalized Logistic regression has on average less accuracy than knn . The best line is belong to knn woth k=5.
+By checking the accuracy of Logistic regression, we see that by k-folds =10 the accuracy decreases dramatically. between 5,10,15 and 20, the best k-fold for LR sounds to be 15.
+
+
+As you said during the class, the combination of logistic regression and ROC curve is so recommended, so now is the time to check the ROC curve
+
+* Area Under ROC Curve with GLM 
+
+```{r}
+# Create the train control object
+control <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+# Check and modify the class levels of the dependent variable if necessary
+levels(insurance$smoker) <- make.names(levels(insurance$smoker))
+
+# Train the model
+mod5 <- train(insurance.new,insurance$smoker,
+  method = "glm",
+  metric = "ROC",
+  preProcess = c("center", "scale"),
+  tuneLength = 10,
+  trControl = control)
+mod5
+```
+So basically the answer of the test tells us by using Generalized Linear model have high accuracy in predicting smoker label. It achieves a high ROC value of 0.9856, indicating good discrimination between the two classes. 
+The sensitivity of 0.9652 suggests that the model correctly identifies a large proportion of the individuals who are smokers(true positive). 
+The specificity of 0.9123 shows that the model also performs well in identifying non-smokers. (true negative)
+
+* Area Under ROC Curve with Knn
+
+```{r}
+control <- trainControl(method="cv", number=5, classProbs=TRUE, summaryFunction=twoClassSummary)
+
+mod6 <- train(insurance.new, insurance$smoker,
+               method = "knn",
+               metric="ROC",
+               preProcess = c("center", "scale"),
+               tuneLength = 10,
+               trControl = control)
+mod6
+```
+
+The highest ROC suggested by k=11 with the amount of 99.25% with 95% sensitivity and 99% specificity. It suggests that knn with k=11 suggests better model to find out the label of smokers.
+
+# Clustering:
+
+Basically, in Unsupervised classification, we do not know the number of groups, and do not have any training set.
+We can basically fix the number of groups base on a priori knowledge of phonemena or by visualization. 
+
+* Non-hierarchical clustering:
+
+The aim is to divide n number of units into a predefined number of clusters.
+
+We know the exact number of clusters, which makes this exercise a bit stupid, but due to lack of time and the shortage of numerical variables in this dataset, I decided to have the observations as a part of my project.
+
+```{r}
+set.seed(123)
+
+library(cluster)    
+library(factoextra)
+ggplot(insurance, aes(bmi, charges, color=region)) +
+  geom_point() 
+```
+```{r}
+ggplot(insurance, aes(age, charges, color=region)) +
+  geom_point() 
+```
+
+```{r}
+ggplot(insurance, aes(age, bmi, color=region)) +
+  geom_point() 
+```
+
+
+```{r}
+ggplot(insurance, aes(bmi, charges, color=smoker)) +
+  geom_point() 
+```
+```{r}
+ggplot(insurance, aes(age, charges, color=smoker)) +
+  geom_point() 
+```
+```{r}
+ggplot(insurance, aes(age, bmi, color=smoker)) +
+  geom_point() 
+```
+
+Basically, by checking scatterplots,, it does not seem to find exact clusters for regions especially. but for smokers, they may be some clusters.
+
+
+I tried k means partitional clustering algorithm for 2 different clusters of region and smoker. 
+```{r message=FALSE, warning=FALSE}
+library(dendextend)
+library(circlize)
+set.seed(123)
+library(cluster)    
+library(factoextra)
+```
+I want to start by clustering base on BMI and Charges.
+
+```{r}
+normalize=function(x){
+  return ((x-min(x))/(max(x)-min(x)))
+}
+norm_ins3=as.data.frame(lapply(insurance.new[,c(2:3)], normalize))
+```
+
+```{r}
+kk3=kmeans(norm_ins3, centers = 2, iter.max = 10, nstart = 1)
+
+kk3
+```
+
+
+```{r}
+p = ggplot(norm_ins3, aes(bmi, charges))
+p + geom_point(aes(colour = factor(insurance$smoker)), size = 4) + ggtitle("Real smoker Categories")
+```
+```{r}
+p = ggplot(norm_ins3, aes( bmi, charges))
+p + geom_point(aes(colour = factor(kk3$cluster)), size = 4) + ggtitle("K-means Results")
+```
+```{r}
+fviz_cluster(kk3, norm_ins3,ellipse.type = "norm")
+```
+
+By visualizing, it sounds a good model of clustering. data points seem to cluster mostly the same as the real dataset, but our within cluster sum of squares and explained variance suggest bad clustering, as we get a little compacness for one group and a significantly higher compactness for the other. It may suggest that we can classify one cluster much better than the other.
+
+
+Let's cluster the regions base on BMI and age with K-means Algorithm:
+
+```{r}
+ins2 <- insurance %>% dplyr::select(age, bmi, region)
+normalize=function(x){
+  return ((x-min(x))/(max(x)-min(x)))
+}
+
+norm_ins2=as.data.frame(lapply(ins2[,c(1:2)], normalize))
+```
+
+
+```{r}
+kk=kmeans(norm_ins2, centers = 4, iter.max = 10, nstart = 1)
+
+kk
+```
+
+```{r}
+p = ggplot(norm_ins2, aes(age, bmi))
+p + geom_point(aes(colour = factor(insurance$region)), size = 4) + ggtitle("Real Region Categories")
+```
+
+
+```{r}
+p = ggplot(norm_ins2, aes(age, bmi))
+p + geom_point(aes(colour = factor(kk$cluster)), size = 4) + ggtitle("K-means Results")
+```
+
+```{r}
+fviz_cluster(kk, norm_ins2,ellipse.type = "norm")
+```
+
+
+Now let's check for smoker binary variable:
+```{r}
+kk2=kmeans(norm_ins2, centers = 2, iter.max = 10, nstart = 1)
+
+kk2
+```
+```{r}
+p = ggplot(norm_ins2, aes(age, bmi))
+p + geom_point(aes(colour = factor(insurance$smoker)), size = 4) + ggtitle("Real smoker Categories")
+```
+
+```{r}
+p = ggplot(norm_ins2, aes(age, bmi))
+p + geom_point(aes(colour = factor(kk2$cluster)), size = 4) + ggtitle("K-means Results")
+```
+
+
+```{r}
+fviz_cluster(kk2, norm_ins2,ellipse.type = "norm")
+```
+
+basically, it sounds like the regions has been identified better as they got less within cluster sum of squares(compactness) in each of the clusters and an overall better quality base on the explained variance(between_SS / total_SS).
+
+* hierarchical clustering:
+
+let's see what in the suggested number of groups base on different methods:
+```{r}
+# Plot cluster results
+p1 <- fviz_nbclust(norm_ins2, FUN = hcut, method = "wss", 
+                   k.max = 10) + ggtitle("(A) Elbow method")
+p2 <- fviz_nbclust(norm_ins2, FUN = hcut, method = "silhouette", 
+                   k.max = 10) +
+  ggtitle("(B) Silhouette method")
+p3 <- fviz_nbclust(norm_ins2, FUN = hcut, method = "gap_stat", 
+                   k.max = 10) +
+  ggtitle("(C) Gap statistic")
+
+gridExtra::grid.arrange(p1, p2, p3, nrow = 1)
+```
+All the three methods suggest 2 clusters.
+base on the scatter plot we got for bmi and age with the color of smoking, it does not seem like the clusters are for smokers. Now I decide to make another column named obese, for people with BMI more than 30, because base on the theory, I feel like it may be 2 clusters of obesity and normal people.
+
+```{r}
+set.seed(123)
+
+library(cluster)    
+library(factoextra)
+
+insurance$obese <- ifelse(insurance$bmi >=30, "yes","no")
+insurance$obese <- as.factor(insurance$obese)
+
+# distances between the rows
+dim(norm_ins2)
+
+head(norm_ins2)
+tail(norm_ins2)
+
+data=norm_ins2
+
+data[, 1:2]
+
+# euclidean - complete linkage
+dd=dist(data[, 1:2], method = "euclidean")
+```
+```{r include=FALSE}
+round(dd,2)
+```
+```{r}
+clusters = hclust(dd,method = "complete")
+plot(clusters)
+
+cut = cutree(clusters, 2)
+table(cut, insurance$obese)
+
+
+library(ggplot2)
+
+attach(data)
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(insurance$obese)), size = 4) + ggtitle("Real obese Categories")
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(cut)), size = 4) + ggtitle("Clustering Results")
+
+
+fviz_cluster(list(data = data[, 1:2], cluster = cut))
+```
+The results does not suggest the exact thing we were looking for, but let's check other type of distances:
+
+```{r}
+dd=dist(data[, 1:2], method = "minkowski",  p = 2)
+
+```
+```{r include=FALSE}
+round(dd,2)
+```
+```{r}
+clusters = hclust(dd,method = "average")
+plot(clusters)
+
+cut = cutree(clusters, 2)
+table(cut, insurance$obese)
+
+
+library(ggplot2)
+
+attach(data)
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(insurance$obese)), size = 4) + ggtitle("Real obese Categories")
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(cut)), size = 4) + ggtitle("Clustering Results")
+
+
+fviz_cluster(list(data = data[, 1:2], cluster = cut))
+```
+```{r}
+# manhattan - simple linkage
+dd=dist(data[, 1:2], method = "manhattan")
+```
+
+```{r include=FALSE}
+
+round(dd,2)
+```
+
+```{r}
+clusters = hclust(dd,method = "single")
+plot(clusters)
+
+cut = cutree(clusters, 2)
+table(cut, insurance$obese)
+
+
+library(ggplot2)
+
+attach(data)
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(insurance$obese)), size = 4) + ggtitle("Real obese Categories")
+
+p = ggplot(data, aes(age, bmi))
+p + geom_point(aes(colour = factor(cut)), size = 4) + ggtitle("Clustering Results")
+
+
+fviz_cluster(list(data = data[, 1:2], cluster = cut))
+```
+
+Base on the confusion matrices we got, we can say that the best distance to choose is euclidean - complete linkage with 803 observations to be classified correctly out of 1338 observations.
+
+___________________________________________________________________________
